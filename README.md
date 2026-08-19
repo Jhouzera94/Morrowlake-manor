@@ -38,15 +38,40 @@ Morrowlake Manor is currently in development.
 
 This repository is being used to document and develop the project as it grows. More source code, documentation, development information, and releases will be added over time.
 
+## Current Development Progress
+
+The current development milestone focuses on the manor’s time-travel sequence.
+
+Implemented or in active testing:
+
+- Restorable manor power system
+- Phase Regulator and Energy Tower progression
+- Portal cable and handheld-device collection
+- Five-step wrench repair interaction
+- Destination computer with year-entry interface
+- 1950 destination level based on the present-day manor
+- Separate 1996 and 1950 atmosphere and lighting
+- Tool inventory with wrench and screwdriver selection
+- Objective and interaction prompts for the portal sequence
+
+The intended sequence is:
+
+**Restore power → activate the machinery → install the missing portal components → repair the portal → enter 1950 at the destination computer → return to the portal and travel.**
+
+The portal visuals, destination interface, audio feedback, and transition into the 1950 level are currently being tested and polished.
+
 ## Links
 
 ### Play / Follow on itch.io
+
 https://wariordesigs.itch.io/morrowlake-manor
 
 ### Development Blog
+
 https://morrowlake-manor-devlog.jonathan-ron-7277.chatgpt.site/
 
 ### Development Video
+
 https://www.youtube.com/watch?v=bj5yz1S5Q_k
 
 ## Contributing
