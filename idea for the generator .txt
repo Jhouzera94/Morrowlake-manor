@@ -1,0 +1,97 @@
+# Morrowlake Manor HUD Kit — Unreal UMG Setup
+
+Import every file beginning with `T_` into a new Unreal folder such as:
+
+`Content/UI/MorrowlakeHUD`
+
+For every imported texture:
+
+- Texture Group: `UI`
+- Compression Settings: `UserInterface2D (RGBA)`
+- Mip Gen Settings: `NoMipmaps`
+
+## WBP_HUD hierarchy
+
+Create a Widget Blueprint called `WBP_HUD` with this hierarchy:
+
+```text
+Canvas Panel (Root)
+├── VignetteImage
+├── ObjectivePanel
+│   ├── ObjectiveFrameImage
+│   ├── ObjectiveHeadingText
+│   ├── CurrentObjectiveText
+│   └── ObjectiveHintText
+├── ClockPanel
+│   ├── ClockFrameImage
+│   ├── TimeText
+│   └── DateText
+├── StatusPanel
+│   ├── StatusFrameImage
+│   ├── KeyIcon
+│   ├── KeyCountText
+│   ├── BlueprintIcon
+│   ├── BlueprintCountText
+│   ├── ComponentsIcon
+│   └── ComponentsCountText
+├── InteractionPanel
+│   ├── InteractFrameImage
+│   └── InteractText
+├── InventoryHintPanel
+│   ├── TabFrameImage
+│   └── InventoryHintText
+└── NotificationPanel
+    ├── ToastFrameImage
+    └── NotificationText
+```
+
+## Suggested 1920 × 1080 placement
+
+| Element | Anchor | Position | Approximate size |
+|---|---|---:|---:|
+| Vignette | Full screen | 0, 0 | Fill screen |
+| ObjectivePanel | Top-left | 32, 28 | 480 × 170 |
+| ClockPanel | Top-right | -320, 28 | 290 × 150 |
+| StatusPanel | Bottom-left | 30, -135 | 550 × 105 |
+| InteractionPanel | Bottom-center | 0, -105 | 250 × 70 |
+| InventoryHintPanel | Bottom-right | -340, -105 | 310 × 70 |
+| NotificationPanel | Top-center | 0, 35 | 420 × 90 |
+
+Set every panel's frame Image to the corresponding texture. Keep live words and numbers as Text widgets; do not bake them into textures.
+
+## Default text
+
+- Objective heading: `CURRENT OBJECTIVE`
+- Objective: `Restore power to the manor`
+- Hint: `Search the generator house`
+- Time: `02:41 AM`
+- Date: `14 OCTOBER 1996`
+- Key count: `1`
+- Blueprint count: `1/3`
+- Components count: `0/4`
+- Interaction: `[E] INTERACT`
+- Inventory hint: `[TAB] EVIDENCE & INVENTORY`
+
+## Behaviour
+
+- `InteractionPanel`: Collapsed normally; visible only near an interactable object.
+- `InventoryHintPanel`: always visible at low opacity. Pulse briefly when an item is collected.
+- `NotificationPanel`: Collapsed normally. Fade in for messages such as `BLUEPRINT ADDED` or `FUSE ACQUIRED`, then fade out.
+- `ObjectivePanel`: update its two live text fields whenever a task changes.
+- Status counters: update only when the inventory changes.
+- The detailed inventory should identify which components belong to the generator, energy tower, and portal. The HUD displays only the combined progress count.
+
+## Fonts and colours
+
+- Recommended Unreal font fallback: a readable serif font; use all-caps only for headings.
+- Primary ivory: `#D6C5A0`
+- Tarnished brass: `#947747`
+- Dim secondary text: `#9A8D73`
+- Panel background: supplied by the frame PNGs.
+
+## Included files
+
+- Six HUD frames
+- Twelve inventory/evidence icons
+- One full-screen transparent vignette
+

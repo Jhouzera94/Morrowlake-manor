@@ -26,15 +26,35 @@ Players must observe their surroundings and put those pieces together for themse
 - Mystery and puzzle solving
 - Environmental storytelling
 - Storytelling through artifacts and architecture
-- Interactive machinery
-- Repair and reconstruction puzzles
+- Inventory for keys, evidence, blueprints, tools, and repair components
+- Objective-driven HUD and interaction feedback
+- Generator, powered doors, monitors, and manor-wide power reactions
+- Multi-stage Energy Tower restoration puzzle
+- Portal repair, destination-date entry, and time-travel level transition
+- Sequential environmental dialogue triggers
 - Exploration of Morrowlake Manor
 - Time-travel narrative
 - Hidden clues and discoveries
 
 ## Development
 
-Morrowlake Manor is currently in development.
+Morrowlake Manor is currently in active development in Unreal Engine 5.6.1.
+
+### Current Progress — August 2026
+
+- The explorable manor and grounds have expanded with attic, key, portal, and 1950-era content.
+- The Energy Tower now supports staged repair progress, component installation, code entry, visual feedback, and portal power delivery.
+- The time portal supports cable and calibration-reader installation, wrench repair, destination entry, activation states, and travel to a configured level.
+- Inventory and HUD systems now cover keys, evidence, tools, repair items, pickup notifications, interaction prompts, and changing objectives.
+- Powered doors and an interactive multi-monitor PC respond to the restored manor power state.
+- A warm-cache performance pass reduced the observed main-map load from 60.83 seconds to 23.40 seconds and removed first-use PSO waits in the verification run. Remaining content warnings are being tracked.
+
+### Next Focus
+
+- Integrate and playtest the full clue-to-generator-to-tower-to-portal route.
+- Repair missing content references and invalid material/Nanite combinations.
+- Polish lighting, audio, objective guidance, animations, and the 1950 destination sequence.
+- Package a stable public vertical-slice build.
 
 This repository is being used to document and develop the project as it grows. More source code, documentation, development information, and releases will be added over time.
 

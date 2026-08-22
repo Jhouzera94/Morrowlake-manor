@@ -7,6 +7,10 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "Components/SceneCaptureComponent2D.h"
+#include "Engine/EngineTypes.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "EngineUtils.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
@@ -36,6 +40,131 @@ void UMansionStartupSubsystem::OnWorldBeginPlay(UWorld& InWorld)
         0.1f,
         true,
         0.0f);
+
+    // Blueprint security cameras previously rendered five additional full
+    // scenes every frame. Configure them after the level actors have begun play.
+    InWorld.GetTimerManager().SetTimer(
+        SecurityCameraSetupTimer,
+        this,
+        &UMansionStartupSubsystem::OptimizeSecurityCameras,
+        1.0f,
+        false);
+}
+
+void UMansionStartupSubsystem::OptimizeSecurityCameras()
+{
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        return;
+    }
+
+    SecurityCameras.Reset();
+
+    for (TActorIterator<AActor> ActorIt(World); ActorIt; ++ActorIt)
+    {
+        AActor* Actor = *ActorIt;
+        if (!Actor || !Actor->GetName().Contains(
+                TEXT("security_camera"),
+                ESearchCase::IgnoreCase))
+        {
+            continue;
+        }
+
+        TInlineComponentArray<USceneCaptureComponent2D*> Captures;
+        Actor->GetComponents(Captures);
+
+        for (USceneCaptureComponent2D* Capture : Captures)
+        {
+            if (!Capture)
+            {
+                continue;
+            }
+
+            Capture->bCaptureEveryFrame = false;
+            Capture->bCaptureOnMovement = false;
+            Capture->MaxViewDistanceOverride = 5000.0f;
+
+            // Security monitors do not need the expensive effects used by the
+            // player's main view.
+            Capture->ShowFlags.SetDynamicShadows(false);
+            Capture->ShowFlags.SetLumenGlobalIllumination(false);
+            Capture->ShowFlags.SetLumenReflections(false);
+            Capture->ShowFlags.SetVolumetricFog(false);
+            Capture->ShowFlags.SetMotionBlur(false);
+
+            if (UTextureRenderTarget2D* Target = Capture->TextureTarget)
+            {
+                const int32 LargestSide = FMath::Max(Target->SizeX, Target->SizeY);
+                if (LargestSide > 512)
+                {
+                    const float Scale = 512.0f / static_cast<float>(LargestSide);
+                    const int32 NewWidth = FMath::Max(
+                        1,
+                        FMath::RoundToInt(Target->SizeX * Scale));
+                    const int32 NewHeight = FMath::Max(
+                        1,
+                        FMath::RoundToInt(Target->SizeY * Scale));
+                    Target->ResizeTarget(NewWidth, NewHeight);
+                }
+            }
+
+            SecurityCameras.Add(Capture);
+        }
+    }
+
+    if (SecurityCameras.IsEmpty())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("MansionStartup: no security cameras found"));
+        return;
+    }
+
+    NextSecurityCameraIndex = 0;
+
+    // With five cameras, one capture every 0.02 seconds gives each monitor a
+    // smooth 10 FPS feed instead of rendering all five at the game's frame rate.
+    World->GetTimerManager().SetTimer(
+        SecurityCameraUpdateTimer,
+        this,
+        &UMansionStartupSubsystem::UpdateNextSecurityCamera,
+        0.02f,
+        true,
+        0.0f);
+
+    UE_LOG(
+        LogTemp,
+        Warning,
+        TEXT("MansionStartup: optimized %d security camera feeds"),
+        SecurityCameras.Num());
+}
+
+void UMansionStartupSubsystem::UpdateNextSecurityCamera()
+{
+    if (SecurityCameras.IsEmpty())
+    {
+        if (UWorld* World = GetWorld())
+        {
+            World->GetTimerManager().ClearTimer(SecurityCameraUpdateTimer);
+        }
+        return;
+    }
+
+    NextSecurityCameraIndex %= SecurityCameras.Num();
+    if (USceneCaptureComponent2D* Capture =
+            SecurityCameras[NextSecurityCameraIndex].Get())
+    {
+        Capture->CaptureScene();
+    }
+    else
+    {
+        SecurityCameras.RemoveAtSwap(NextSecurityCameraIndex);
+    }
+
+    if (!SecurityCameras.IsEmpty())
+    {
+        NextSecurityCameraIndex =
+            (NextSecurityCameraIndex + 1) % SecurityCameras.Num();
+    }
 }
 
 void UMansionStartupSubsystem::RepairStartup()
@@ -71,6 +200,12 @@ void UMansionStartupSubsystem::RepairStartup()
             if (Pawn)
             {
                 PC->Possess(Pawn);
+                Pawn->SetActorLocationAndRotation(
+                    FVector(-1317.85, -1092.33, 291.97),
+                    FRotator(0.0, 125.35, 0.0),
+                    false,
+                    nullptr,
+                    ETeleportType::TeleportPhysics);
                 UE_LOG(LogTemp, Warning, TEXT("MansionStartup: spawned and possessed player"));
             }
         }
@@ -78,15 +213,6 @@ void UMansionStartupSubsystem::RepairStartup()
 
     if (Pawn)
     {
-        const FVector SafeLocation(-1317.85, -1092.33, 291.97);
-        Pawn->SetActorLocationAndRotation(
-            SafeLocation,
-            FRotator(0.0, 125.35, 0.0),
-            false,
-            nullptr,
-            ETeleportType::TeleportPhysics);
-        UE_LOG(LogTemp, Warning, TEXT("MansionStartup: player placed at mansion entrance"));
-
         if (ACharacter* Character = Cast<ACharacter>(Pawn))
         {
             // Mouse/controller yaw turns the whole body. The camera and

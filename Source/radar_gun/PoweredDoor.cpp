@@ -226,12 +226,14 @@ void APoweredDoor::UseDoor()
 
     if (!HasPower())
     {
-        if (LockedSound)
+        const float CurrentTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+        if (LockedSound && CurrentTime - LastLockedSoundTime >= LockedSoundCooldown)
         {
             UGameplayStatics::PlaySoundAtLocation(
                 this,
                 LockedSound,
                 GetActorLocation());
+            LastLockedSoundTime = CurrentTime;
         }
 
         UpdateInteractionPrompt();

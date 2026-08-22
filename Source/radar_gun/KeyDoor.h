@@ -2,14 +2,15 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "PlayerInventoryComponent.h"
 #include "KeyDoor.generated.h"
 
 class UBoxComponent;
 class UGameHUDWidget;
-class UPlayerInventoryComponent;
 class USceneComponent;
 class USoundBase;
 class UStaticMeshComponent;
+
 
 UCLASS()
 class RADAR_GUN_API AKeyDoor : public AActor

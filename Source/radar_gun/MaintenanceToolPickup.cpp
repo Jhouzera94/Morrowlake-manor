@@ -191,7 +191,14 @@ void AMaintenanceToolPickup::CollectTool()
     bCollected = true;
     bPlayerIsNearby = false;
 
-    Inventory->AddMaintenanceTool();
+    if (bAddsPortalWrench)
+    {
+        Inventory->AddPortalWrench();
+    }
+    else
+    {
+        Inventory->AddMaintenanceTool();
+    }
     HideInteractionPrompt();
     DisableInput(PlayerController);
 
@@ -203,19 +210,30 @@ void AMaintenanceToolPickup::CollectTool()
             GetActorLocation());
     }
 
-    FindGameHUDWidget();
+    // Update every active gameplay HUD. This writes directly to the
+    // CurrentObjectiveText / ObjectiveHintText in the objective frame rather
+    // than relying on a stale cached widget or a separate prompt.
+    TArray<UUserWidget*> FoundWidgets;
+    UWidgetBlueprintLibrary::GetAllWidgetsOfClass(
+        this, FoundWidgets, UGameHUDWidget::StaticClass(), false);
 
-    if (GameHUDWidget)
+    for (UUserWidget* Widget : FoundWidgets)
     {
-        GameHUDWidget->UpdateObjective(
-            ObjectiveAfterPickup,
-            ObjectiveHintAfterPickup);
+        if (UGameHUDWidget* HUD = Cast<UGameHUDWidget>(Widget))
+        {
+            HUD->UpdateObjective(
+                ObjectiveAfterPickup,
+                ObjectiveHintAfterPickup);
+        }
     }
 
     UE_LOG(
         LogTemp,
         Warning,
-        TEXT("Maintenance Tool collected."));
+        TEXT("%s collected."),
+        bAddsPortalWrench
+            ? TEXT("Portal wrench")
+            : TEXT("Maintenance tool"));
 
     SetActorHiddenInGame(true);
     SetActorEnableCollision(false);

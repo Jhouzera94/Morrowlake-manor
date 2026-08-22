@@ -273,9 +273,21 @@ void APhaseRegulatorMachine::UpdateObjective()
 
     if (!IsManorPowerOn())
     {
+        const int32 CollectedParts = FMath::Clamp(
+            GetInstalledPartCount() + Inventory->GetHeldRepairItemCount(),
+            0,
+            3
+        );
+
         GameHUDWidget->UpdateObjective(
             FText::FromString(TEXT("Restore power to the manor")),
-            FText::FromString(TEXT("The Phase Regulator is offline")));
+            FText::Format(
+                FText::FromString(
+                    TEXT("Components collected: {0}/3. The Phase Regulator is offline")
+                ),
+                FText::AsNumber(CollectedParts)
+            )
+        );
         if (bPlayerIsNearby)
         {
             GameHUDWidget->ShowInteractionPromptWithText(

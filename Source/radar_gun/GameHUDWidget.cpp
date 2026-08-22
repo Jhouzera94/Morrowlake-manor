@@ -14,12 +14,95 @@
 #include "Components/VerticalBoxSlot.h"
 #include "GameFramework/PlayerController.h"
 
+
 void UGameHUDWidget::NativeConstruct()
 {
     Super::NativeConstruct();
+
+    // The existing WBP_HUD inventory slots use user-friendly names with
+    // spaces. Support those names as well as the C++ binding names.
+    if (WidgetTree)
+    {
+        if (!TowerCableIcon)
+        {
+            TowerCableIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("CableIcon")));
+            if (!TowerCableIcon)
+            {
+                TowerCableIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("Cable Icon")));
+            }
+        }
+
+        if (!FuseIcon)
+        {
+            FuseIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("Fuse Icon")));
+        }
+
+        if (!ScrewdriverIcon)
+        {
+            ScrewdriverIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("Screwdriver Icon")));
+            if (!ScrewdriverIcon)
+            {
+                // The current HUD uses this shortened spelling in its
+                // hierarchy. Keep both spellings so renaming is not required.
+                ScrewdriverIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("Screwdrive Icon")));
+            }
+            if (!ScrewdriverIcon)
+            {
+                ScrewdriverIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("screwdrivel")));
+            }
+        }
+
+        if (!PCAmountText)
+        {
+            PCAmountText = Cast<UTextBlock>(WidgetTree->FindWidget(TEXT("pc amount")));
+        }
+        if (!CableAmountText)
+        {
+            CableAmountText = Cast<UTextBlock>(WidgetTree->FindWidget(TEXT("cable amount")));
+        }
+
+        ActiveToolScrewdriverIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("tool widget")));
+        if (!ActiveToolScrewdriverIcon)
+        {
+            ActiveToolScrewdriverIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("Tool Widget")));
+        }
+
+        ActiveToolWrenchIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("Wrench icon")));
+        if (!ActiveToolWrenchIcon)
+        {
+            ActiveToolWrenchIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("Wrench Icon")));
+        }
+        if (!ActiveToolWrenchIcon)
+        {
+            ActiveToolWrenchIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("Wrenchicon")));
+        }
+    }
+
+    if (CurrentObjectiveText)
+    {
+        CurrentObjectiveText->SetAutoWrapText(false);
+        FSlateFontInfo ObjectiveFont = CurrentObjectiveText->GetFont();
+        ObjectiveFont.Size = 25;
+        CurrentObjectiveText->SetFont(ObjectiveFont);
+    }
+    if (ObjectiveHintText)
+    {
+        ObjectiveHintText->SetAutoWrapText(false);
+        FSlateFontInfo HintFont = ObjectiveHintText->GetFont();
+        HintFont.Size = 13;
+        ObjectiveHintText->SetFont(HintFont);
+    }
+
     HideInteractionPrompt();
 
-    UpdateRepairItemIcons(false, false, false);
+    UpdateRepairItemIcons(
+        0,
+        false,
+        false,
+        false,
+        false,
+        false
+    );
 
     EnsurePhaseRegulatorProgressWidgets();
     HidePhaseRegulatorStartupProgress();
@@ -29,59 +112,111 @@ void UGameHUDWidget::NativeConstruct()
         if (APawn* PlayerPawn = PlayerController->GetPawn())
         {
             if (UPlayerInventoryComponent* Inventory =
-                    PlayerPawn->FindComponentByClass<UPlayerInventoryComponent>())
+                PlayerPawn->FindComponentByClass<UPlayerInventoryComponent>())
             {
                 Inventory->RefreshPhaseRegulatorObjective();
+                UpdateStackableItemCounts(
+                    Inventory->GetCalibrationReaderCount(),
+                    Inventory->GetTowerCableCount());
             }
         }
     }
 }
+
+void UGameHUDWidget::UpdateActiveToolDisplay(
+    bool bHasScrewdriver,
+    bool bHasWrench,
+    bool bShowWrench)
+{
+    if (WidgetTree)
+    {
+        if (!ActiveToolScrewdriverIcon)
+        {
+            ActiveToolScrewdriverIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("tool widget")));
+        }
+        if (!ActiveToolWrenchIcon)
+        {
+            ActiveToolWrenchIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("Wrench icon")));
+        }
+        if (!ActiveToolWrenchIcon)
+        {
+            ActiveToolWrenchIcon = Cast<UImage>(WidgetTree->FindWidget(TEXT("Wrenchicon")));
+        }
+    }
+
+    const bool bDisplayWrench = bHasWrench && (bShowWrench || !bHasScrewdriver);
+    const bool bDisplayScrewdriver = bHasScrewdriver && !bDisplayWrench;
+
+    if (ActiveToolScrewdriverIcon)
+    {
+        ActiveToolScrewdriverIcon->SetVisibility(
+            bDisplayScrewdriver ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+    }
+    if (ActiveToolWrenchIcon)
+    {
+        ActiveToolWrenchIcon->SetVisibility(
+            bDisplayWrench ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+    }
+}
+
 
 void UGameHUDWidget::ShowInteractionPrompt()
 {
     if (InteractionFrameImage)
     {
         InteractionFrameImage->SetVisibility(
-            ESlateVisibility::HitTestInvisible);
+            ESlateVisibility::HitTestInvisible
+        );
     }
 
     if (InteractionText)
     {
         InteractionText->SetText(
             FText::FromString(
-                TEXT("[E] INTERACT")));
+                TEXT("[E] INTERACT")
+            )
+        );
 
         InteractionText->SetVisibility(
-            ESlateVisibility::HitTestInvisible);
+            ESlateVisibility::HitTestInvisible
+        );
     }
 }
+
 
 void UGameHUDWidget::HideInteractionPrompt()
 {
     if (InteractionFrameImage)
     {
         InteractionFrameImage->SetVisibility(
-            ESlateVisibility::Collapsed);
+            ESlateVisibility::Collapsed
+        );
     }
 
     if (InteractionText)
     {
         InteractionText->SetVisibility(
-            ESlateVisibility::Collapsed);
+            ESlateVisibility::Collapsed
+        );
     }
 }
+
 
 void UGameHUDWidget::UpdateKeyCount(int32 CurrentKeys)
 {
     if (KeyCountText)
     {
-        KeyCountText->SetText(FText::AsNumber(CurrentKeys));
+        KeyCountText->SetText(
+            FText::AsNumber(CurrentKeys)
+        );
     }
 }
 
+
 void UGameHUDWidget::UpdateBlueprintCount(
     int32 CurrentBlueprints,
-    int32 TotalBlueprints)
+    int32 TotalBlueprints
+)
 {
     if (HUDBlueprintCountText)
     {
@@ -89,13 +224,17 @@ void UGameHUDWidget::UpdateBlueprintCount(
             FText::Format(
                 FText::FromString(TEXT("{0}/{1}")),
                 FText::AsNumber(CurrentBlueprints),
-                FText::AsNumber(TotalBlueprints)));
+                FText::AsNumber(TotalBlueprints)
+            )
+        );
     }
 }
 
+
 void UGameHUDWidget::UpdateComponentCount(
     int32 CurrentComponents,
-    int32 TotalComponents)
+    int32 TotalComponents
+)
 {
     if (ComponentsCountText)
     {
@@ -103,220 +242,494 @@ void UGameHUDWidget::UpdateComponentCount(
             FText::Format(
                 FText::FromString(TEXT("{0}/{1}")),
                 FText::AsNumber(CurrentComponents),
-                FText::AsNumber(TotalComponents)));
+                FText::AsNumber(TotalComponents)
+            )
+        );
     }
 }
 
+
 void UGameHUDWidget::UpdateObjective(
     const FText& NewObjective,
-    const FText& NewHint)
+    const FText& NewHint
+)
 {
     if (CurrentObjectiveText)
     {
-        CurrentObjectiveText->SetText(NewObjective);
+        CurrentObjectiveText->SetText(
+            NewObjective
+        );
     }
 
     if (ObjectiveHintText)
     {
-        ObjectiveHintText->SetText(NewHint);
+        ObjectiveHintText->SetText(
+            NewHint
+        );
     }
 }
+
+
 void UGameHUDWidget::ShowFlashlightHint()
 {
     if (FlashlightHintText)
     {
         FlashlightHintText->SetVisibility(
-            ESlateVisibility::HitTestInvisible);
+            ESlateVisibility::HitTestInvisible
+        );
     }
 }
 
+
 void UGameHUDWidget::ShowInteractionPromptWithText(
-    const FText& PromptText)
+    const FText& PromptText
+)
 {
     if (InteractionText)
     {
-        InteractionText->SetText(PromptText);
+        InteractionText->SetText(
+            PromptText
+        );
 
         InteractionText->SetVisibility(
-            ESlateVisibility::HitTestInvisible);
+            ESlateVisibility::HitTestInvisible
+        );
     }
 
     if (InteractionFrameImage)
     {
         InteractionFrameImage->SetVisibility(
-            ESlateVisibility::HitTestInvisible);
+            ESlateVisibility::HitTestInvisible
+        );
     }
 }
 
+
+// =========================================================
+// INVENTORY ICONS
+// =========================================================
+
 void UGameHUDWidget::UpdateRepairItemIcons(
-    bool bHasCalibrationReader,
+    int32 CalibrationReaderCount,
     bool bHasPressureCanister,
-    bool bHasResonanceConduit)
+    bool bHasResonanceConduit,
+    bool bHasTowerCable,
+    bool bHasFuse,
+    bool bHasScrewdriver
+)
 {
     if (CalibrationReaderIcon)
     {
         CalibrationReaderIcon->SetVisibility(
-            bHasCalibrationReader
-                ? ESlateVisibility::HitTestInvisible
-                : ESlateVisibility::Collapsed);
+            CalibrationReaderCount > 0
+            ? ESlateVisibility::HitTestInvisible
+            : ESlateVisibility::Collapsed
+        );
+    }
+
+    if (CalibrationReaderCountText)
+    {
+        CalibrationReaderCountText->SetText(FText::AsNumber(CalibrationReaderCount));
+        CalibrationReaderCountText->SetVisibility(
+            CalibrationReaderCount > 0
+            ? ESlateVisibility::HitTestInvisible
+            : ESlateVisibility::Collapsed);
     }
 
     if (PressureCanisterIcon)
     {
         PressureCanisterIcon->SetVisibility(
             bHasPressureCanister
-                ? ESlateVisibility::HitTestInvisible
-                : ESlateVisibility::Collapsed);
+            ? ESlateVisibility::HitTestInvisible
+            : ESlateVisibility::Collapsed
+        );
     }
 
     if (ResonanceConduitIcon)
     {
         ResonanceConduitIcon->SetVisibility(
             bHasResonanceConduit
-                ? ESlateVisibility::HitTestInvisible
-                : ESlateVisibility::Collapsed);
+            ? ESlateVisibility::HitTestInvisible
+            : ESlateVisibility::Collapsed
+        );
+    }
+
+    if (TowerCableIcon)
+    {
+        TowerCableIcon->SetVisibility(
+            bHasTowerCable
+            ? ESlateVisibility::HitTestInvisible
+            : ESlateVisibility::Collapsed
+        );
+    }
+
+    if (FuseIcon)
+    {
+        FuseIcon->SetVisibility(
+            bHasFuse ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+    }
+
+    if (ScrewdriverIcon)
+    {
+        ScrewdriverIcon->SetVisibility(
+            bHasScrewdriver ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
     }
 }
 
+void UGameHUDWidget::UpdateStackableItemCounts(
+    int32 HandheldCount,
+    int32 CableCount)
+{
+    // These labels were added in the existing UMG layout with lower-case
+    // names and spaces. Resolve them again here in case the HUD was created
+    // after the inventory was first updated.
+    if (WidgetTree)
+    {
+        if (!PCAmountText)
+        {
+            PCAmountText = Cast<UTextBlock>(WidgetTree->FindWidget(TEXT("pc amount")));
+            if (!PCAmountText)
+            {
+                PCAmountText = Cast<UTextBlock>(WidgetTree->FindWidget(TEXT("PCAmount")));
+            }
+        }
+        if (!CableAmountText)
+        {
+            CableAmountText = Cast<UTextBlock>(WidgetTree->FindWidget(TEXT("cable amount")));
+            if (!CableAmountText)
+            {
+                CableAmountText = Cast<UTextBlock>(WidgetTree->FindWidget(TEXT("CableAmount")));
+            }
+        }
+    }
+
+    if (PCAmountText)
+    {
+        PCAmountText->SetText(FText::AsNumber(HandheldCount));
+        PCAmountText->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+
+    if (CableAmountText)
+    {
+        CableAmountText->SetText(FText::AsNumber(CableCount));
+        CableAmountText->SetVisibility(ESlateVisibility::HitTestInvisible);
+    }
+}
+
+
+// =========================================================
+// PHASE REGULATOR PROGRESS
+// =========================================================
+
 void UGameHUDWidget::EnsurePhaseRegulatorProgressWidgets()
 {
-    if (PhaseRegulatorProgressBar && PhaseRegulatorProgressText)
+    if (
+        PhaseRegulatorProgressBar &&
+        PhaseRegulatorProgressText
+        )
     {
         PhaseRegulatorProgressContainer =
-            Cast<UBorder>(PhaseRegulatorProgressBar->GetParent());
+            Cast<UBorder>(
+                PhaseRegulatorProgressBar->GetParent()
+            );
+
         return;
     }
 
-    if (!WidgetTree || !WidgetTree->RootWidget)
+    if (
+        !WidgetTree ||
+        !WidgetTree->RootWidget
+        )
     {
         return;
     }
 
-    UPanelWidget* RootPanel = Cast<UPanelWidget>(WidgetTree->RootWidget);
+    UPanelWidget* RootPanel =
+        Cast<UPanelWidget>(
+            WidgetTree->RootWidget
+        );
+
     if (!RootPanel)
     {
         return;
     }
 
+
     PhaseRegulatorProgressContainer =
         WidgetTree->ConstructWidget<UBorder>(
             UBorder::StaticClass(),
-            TEXT("RuntimePhaseRegulatorProgressContainer"));
+            TEXT("RuntimePhaseRegulatorProgressContainer")
+        );
+
 
     UVerticalBox* ProgressLayout =
         WidgetTree->ConstructWidget<UVerticalBox>(
             UVerticalBox::StaticClass(),
-            TEXT("RuntimePhaseRegulatorProgressLayout"));
+            TEXT("RuntimePhaseRegulatorProgressLayout")
+        );
+
 
     PhaseRegulatorProgressText =
         WidgetTree->ConstructWidget<UTextBlock>(
             UTextBlock::StaticClass(),
-            TEXT("RuntimePhaseRegulatorProgressText"));
+            TEXT("RuntimePhaseRegulatorProgressText")
+        );
+
 
     PhaseRegulatorProgressBar =
         WidgetTree->ConstructWidget<UProgressBar>(
             UProgressBar::StaticClass(),
-            TEXT("RuntimePhaseRegulatorProgressBar"));
+            TEXT("RuntimePhaseRegulatorProgressBar")
+        );
 
-    if (!PhaseRegulatorProgressContainer ||
+
+    if (
+        !PhaseRegulatorProgressContainer ||
         !ProgressLayout ||
         !PhaseRegulatorProgressText ||
-        !PhaseRegulatorProgressBar)
+        !PhaseRegulatorProgressBar
+        )
     {
         return;
     }
 
-    PhaseRegulatorProgressContainer->SetBrushColor(
-        FLinearColor(0.015f, 0.035f, 0.045f, 0.94f));
-    PhaseRegulatorProgressContainer->SetPadding(FMargin(18.0f, 12.0f));
 
-    PhaseRegulatorProgressText->SetJustification(ETextJustify::Center);
+    PhaseRegulatorProgressContainer->SetBrushColor(
+        FLinearColor(
+            0.015f,
+            0.035f,
+            0.045f,
+            0.94f
+        )
+    );
+
+
+    PhaseRegulatorProgressContainer->SetPadding(
+        FMargin(
+            18.0f,
+            12.0f
+        )
+    );
+
+
+    PhaseRegulatorProgressText->SetJustification(
+        ETextJustify::Center
+    );
+
+
     PhaseRegulatorProgressText->SetColorAndOpacity(
-        FSlateColor(FLinearColor(0.86f, 0.79f, 0.56f, 1.0f)));
+        FSlateColor(
+            FLinearColor(
+                0.86f,
+                0.79f,
+                0.56f,
+                1.0f
+            )
+        )
+    );
+
 
     PhaseRegulatorProgressBar->SetFillColorAndOpacity(
-        FLinearColor(0.08f, 0.78f, 0.86f, 1.0f));
-    PhaseRegulatorProgressBar->SetPercent(0.0f);
+        FLinearColor(
+            0.08f,
+            0.78f,
+            0.86f,
+            1.0f
+        )
+    );
 
-    ProgressLayout->AddChildToVerticalBox(PhaseRegulatorProgressText);
-    if (UVerticalBoxSlot* ProgressSlot =
-            ProgressLayout->AddChildToVerticalBox(PhaseRegulatorProgressBar))
+
+    PhaseRegulatorProgressBar->SetPercent(
+        0.0f
+    );
+
+
+    ProgressLayout->AddChildToVerticalBox(
+        PhaseRegulatorProgressText
+    );
+
+
+    if (
+        UVerticalBoxSlot* ProgressSlot =
+        ProgressLayout->AddChildToVerticalBox(
+            PhaseRegulatorProgressBar
+        )
+        )
     {
-        ProgressSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
+        ProgressSlot->SetPadding(
+            FMargin(
+                0.0f,
+                8.0f,
+                0.0f,
+                0.0f
+            )
+        );
     }
 
-    PhaseRegulatorProgressContainer->SetContent(ProgressLayout);
 
-    if (UCanvasPanel* RootCanvas = Cast<UCanvasPanel>(RootPanel))
+    PhaseRegulatorProgressContainer->SetContent(
+        ProgressLayout
+    );
+
+
+    if (
+        UCanvasPanel* RootCanvas =
+        Cast<UCanvasPanel>(
+            RootPanel
+        )
+        )
     {
-        if (UCanvasPanelSlot* CanvasSlot =
-                RootCanvas->AddChildToCanvas(PhaseRegulatorProgressContainer))
+        if (
+            UCanvasPanelSlot* CanvasSlot =
+            RootCanvas->AddChildToCanvas(
+                PhaseRegulatorProgressContainer
+            )
+            )
         {
-            CanvasSlot->SetAnchors(FAnchors(0.5f, 0.82f));
-            CanvasSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-            CanvasSlot->SetPosition(FVector2D::ZeroVector);
-            CanvasSlot->SetSize(FVector2D(430.0f, 86.0f));
-            CanvasSlot->SetZOrder(100);
+            CanvasSlot->SetAnchors(
+                FAnchors(
+                    0.5f,
+                    0.82f
+                )
+            );
+
+            CanvasSlot->SetAlignment(
+                FVector2D(
+                    0.5f,
+                    0.5f
+                )
+            );
+
+            CanvasSlot->SetPosition(
+                FVector2D::ZeroVector
+            );
+
+            CanvasSlot->SetSize(
+                FVector2D(
+                    430.0f,
+                    86.0f
+                )
+            );
+
+            CanvasSlot->SetZOrder(
+                100
+            );
         }
     }
     else
     {
-        RootPanel->AddChild(PhaseRegulatorProgressContainer);
+        RootPanel->AddChild(
+            PhaseRegulatorProgressContainer
+        );
     }
 }
 
+
 void UGameHUDWidget::ShowPhaseRegulatorStartupProgress(
     float Progress,
-    float RemainingSeconds)
+    float RemainingSeconds
+)
 {
     EnsurePhaseRegulatorProgressWidgets();
 
-    const float ClampedProgress = FMath::Clamp(Progress, 0.0f, 1.0f);
+
+    const float ClampedProgress =
+        FMath::Clamp(
+            Progress,
+            0.0f,
+            1.0f
+        );
+
 
     if (PhaseRegulatorProgressBar)
     {
-        PhaseRegulatorProgressBar->SetPercent(ClampedProgress);
+        PhaseRegulatorProgressBar->SetPercent(
+            ClampedProgress
+        );
+
         PhaseRegulatorProgressBar->SetVisibility(
-            ESlateVisibility::HitTestInvisible);
+            ESlateVisibility::HitTestInvisible
+        );
     }
+
 
     if (PhaseRegulatorProgressText)
     {
-        const int32 Percent = FMath::RoundToInt(ClampedProgress * 100.0f);
-        const int32 Seconds = FMath::CeilToInt(FMath::Max(0.0f, RemainingSeconds));
+        const int32 Percent =
+            FMath::RoundToInt(
+                ClampedProgress * 100.0f
+            );
+
+
+        const int32 Seconds =
+            FMath::CeilToInt(
+                FMath::Max(
+                    0.0f,
+                    RemainingSeconds
+                )
+            );
+
 
         PhaseRegulatorProgressText->SetText(
             FText::Format(
                 FText::FromString(
-                    TEXT("PHASE REGULATOR STARTING  {0}%  |  {1}s")),
-                FText::AsNumber(Percent),
-                FText::AsNumber(Seconds)));
+                    TEXT(
+                        "PHASE REGULATOR STARTING  {0}%  |  {1}s"
+                    )
+                ),
+                FText::AsNumber(
+                    Percent
+                ),
+                FText::AsNumber(
+                    Seconds
+                )
+            )
+        );
+
+
         PhaseRegulatorProgressText->SetVisibility(
-            ESlateVisibility::HitTestInvisible);
+            ESlateVisibility::HitTestInvisible
+        );
     }
+
 
     if (PhaseRegulatorProgressContainer)
     {
         PhaseRegulatorProgressContainer->SetVisibility(
-            ESlateVisibility::HitTestInvisible);
+            ESlateVisibility::HitTestInvisible
+        );
     }
 }
+
 
 void UGameHUDWidget::HidePhaseRegulatorStartupProgress()
 {
     if (PhaseRegulatorProgressContainer)
     {
         PhaseRegulatorProgressContainer->SetVisibility(
-            ESlateVisibility::Collapsed);
+            ESlateVisibility::Collapsed
+        );
     }
 
-    if (PhaseRegulatorProgressBar && !PhaseRegulatorProgressContainer)
+
+    if (
+        PhaseRegulatorProgressBar &&
+        !PhaseRegulatorProgressContainer
+        )
     {
-        PhaseRegulatorProgressBar->SetVisibility(ESlateVisibility::Collapsed);
+        PhaseRegulatorProgressBar->SetVisibility(
+            ESlateVisibility::Collapsed
+        );
     }
 
-    if (PhaseRegulatorProgressText && !PhaseRegulatorProgressContainer)
+
+    if (
+        PhaseRegulatorProgressText &&
+        !PhaseRegulatorProgressContainer
+        )
     {
-        PhaseRegulatorProgressText->SetVisibility(ESlateVisibility::Collapsed);
+        PhaseRegulatorProgressText->SetVisibility(
+            ESlateVisibility::Collapsed
+        );
     }
 }

@@ -1,6 +1,7 @@
 #include "RepairItem.h"
 #include "GameHUDWidget.h"
 #include "PlayerInventoryComponent.h"
+
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/BoxComponent.h"
@@ -12,34 +13,60 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 
+
 ARepairItem::ARepairItem()
 {
     PrimaryActorTick.bCanEverTick = false;
 
-    ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
+    ItemMesh =
+        CreateDefaultSubobject<UStaticMeshComponent>(
+            TEXT("ItemMesh")
+        );
+
     RootComponent = ItemMesh;
 
-    InteractionTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractionTrigger"));
+
+    InteractionTrigger =
+        CreateDefaultSubobject<UBoxComponent>(
+            TEXT("InteractionTrigger")
+        );
+
     InteractionTrigger->SetupAttachment(RootComponent);
-    InteractionTrigger->SetBoxExtent(FVector(100.0f, 100.0f, 100.0f));
-    InteractionTrigger->SetCollisionProfileName(TEXT("Trigger"));
+
+    InteractionTrigger->SetBoxExtent(
+        FVector(100.0f, 100.0f, 100.0f)
+    );
+
+    InteractionTrigger->SetCollisionProfileName(
+        TEXT("Trigger")
+    );
+
 
     ItemID = NAME_None;
+
     bCollected = false;
 
-    static ConstructorHelpers::FObjectFinder<USoundBase> PickupSoundAsset(
-        TEXT("/Engine/VREditor/Sounds/UI/Object_PickUp.Object_PickUp"));
+
+    static ConstructorHelpers::FObjectFinder<USoundBase>
+        PickupSoundAsset(
+            TEXT("/Engine/VREditor/Sounds/UI/Object_PickUp.Object_PickUp")
+        );
+
     if (PickupSoundAsset.Succeeded())
     {
         PickupSound = PickupSoundAsset.Object;
     }
 }
 
+
 void ARepairItem::BeginPlay()
 {
     Super::BeginPlay();
 
-    APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+
+    APlayerController* PlayerController =
+        GetWorld()->GetFirstPlayerController();
+
 
     if (PlayerController)
     {
@@ -51,13 +78,16 @@ void ARepairItem::BeginPlay()
                 EKeys::E,
                 IE_Pressed,
                 this,
-                &ARepairItem::CollectItem);
+                &ARepairItem::CollectItem
+            );
+
 
             InputComponent->BindKey(
                 EKeys::Gamepad_FaceButton_Left,
                 IE_Pressed,
                 this,
-                &ARepairItem::CollectItem);
+                &ARepairItem::CollectItem
+            );
 
             InputComponent->KeyBindings.Last().bConsumeInput = false;
         }
@@ -65,16 +95,22 @@ void ARepairItem::BeginPlay()
         DisableInput(PlayerController);
     }
 
+
     InteractionTrigger->OnComponentBeginOverlap.AddDynamic(
         this,
-        &ARepairItem::OnPlayerEnterRange);
+        &ARepairItem::OnPlayerEnterRange
+    );
+
 
     InteractionTrigger->OnComponentEndOverlap.AddDynamic(
         this,
-        &ARepairItem::OnPlayerLeaveRange);
+        &ARepairItem::OnPlayerLeaveRange
+    );
+
 
     FindGameHUDWidget();
 }
+
 
 void ARepairItem::CollectItem()
 {
@@ -83,33 +119,107 @@ void ARepairItem::CollectItem()
         return;
     }
 
+
     APlayerController* PlayerController =
         GetWorld()->GetFirstPlayerController();
 
+
     if (PlayerController)
     {
-        APawn* PlayerPawn = PlayerController->GetPawn();
+        APawn* PlayerPawn =
+            PlayerController->GetPawn();
+
 
         if (PlayerPawn)
         {
             UPlayerInventoryComponent* Inventory =
-                PlayerPawn->FindComponentByClass<UPlayerInventoryComponent>();
+                PlayerPawn->FindComponentByClass<
+                UPlayerInventoryComponent
+                >();
+
 
             if (Inventory)
             {
-                const FString PickupClassName = GetClass()->GetName();
+                const FString PickupClassName =
+                    GetClass()->GetName();
 
-                if (PickupClassName.Contains(TEXT("CalibrationReader")))
+
+                // =============================================
+                // TOWER CABLE
+                // =============================================
+
+                if (
+                    PickupClassName.Contains(
+                        TEXT("TowerCable")
+                    )
+                    )
+                {
+                    Inventory->AddTowerCable();
+
+                    UE_LOG(
+                        LogTemp,
+                        Warning,
+                        TEXT("Tower Cable collected.")
+                    );
+                }
+
+
+                // =============================================
+                // CALIBRATION READER
+                // =============================================
+
+                else if (
+                    PickupClassName.Contains(
+                        TEXT("CalibrationReader")
+                    )
+                    )
                 {
                     Inventory->AddCalibrationReader();
                 }
-                else if (PickupClassName.Contains(TEXT("PressureCanister")))
+
+
+                // =============================================
+                // PRESSURE CANISTER
+                // =============================================
+
+                else if (
+                    PickupClassName.Contains(
+                        TEXT("PressureCanister")
+                    )
+                    )
                 {
                     Inventory->AddPressureCanister();
                 }
-                else if (PickupClassName.Contains(TEXT("ResonanceConduit")))
+
+
+                // =============================================
+                // RESONANCE CONDUIT
+                // =============================================
+
+                else if (
+                    PickupClassName.Contains(
+                        TEXT("ResonanceConduit")
+                    )
+                    )
                 {
                     Inventory->AddResonanceConduit();
+                }
+
+
+                // =============================================
+                // UNKNOWN ITEM
+                // =============================================
+
+                else
+                {
+                    UE_LOG(
+                        LogTemp,
+                        Warning,
+                        TEXT(
+                            "RepairItem pickup type not recognized: %s"
+                        ),
+                        *PickupClassName
+                    );
                 }
             }
             else
@@ -117,32 +227,68 @@ void ARepairItem::CollectItem()
                 UE_LOG(
                     LogTemp,
                     Warning,
-                    TEXT("PlayerInventoryComponent was not found while collecting %s."),
-                    *GetName());
+                    TEXT(
+                        "PlayerInventoryComponent was not found while collecting %s."
+                    ),
+                    *GetName()
+                );
+
+                return;
             }
         }
     }
 
+
+    // =============================================
+    // FINISH PICKUP
+    // =============================================
+
     bCollected = true;
+
 
     if (PickupSound)
     {
         UGameplayStatics::PlaySoundAtLocation(
-            this, PickupSound, GetActorLocation());
+            this,
+            PickupSound,
+            GetActorLocation()
+        );
     }
 
+
     FindGameHUDWidget();
+
+
     if (GameHUDWidget)
     {
         GameHUDWidget->HideInteractionPrompt();
     }
 
-    ItemMesh->SetVisibility(false);
-    ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    InteractionTrigger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    DisableInput(PlayerController);
+    if (ItemMesh)
+    {
+        ItemMesh->SetVisibility(false);
+
+        ItemMesh->SetCollisionEnabled(
+            ECollisionEnabled::NoCollision
+        );
+    }
+
+
+    if (InteractionTrigger)
+    {
+        InteractionTrigger->SetCollisionEnabled(
+            ECollisionEnabled::NoCollision
+        );
+    }
+
+
+    if (PlayerController)
+    {
+        DisableInput(PlayerController);
+    }
 }
+
 
 void ARepairItem::OnPlayerEnterRange(
     UPrimitiveComponent* OverlappedComponent,
@@ -150,41 +296,64 @@ void ARepairItem::OnPlayerEnterRange(
     UPrimitiveComponent* OtherComp,
     int32 OtherBodyIndex,
     bool bFromSweep,
-    const FHitResult& SweepResult)
+    const FHitResult& SweepResult
+)
 {
-    APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+    APlayerController* PlayerController =
+        GetWorld()->GetFirstPlayerController();
 
-    if (PlayerController && OtherActor == PlayerController->GetPawn() && !bCollected)
+
+    if (
+        PlayerController &&
+        OtherActor == PlayerController->GetPawn() &&
+        !bCollected
+        )
     {
         EnableInput(PlayerController);
 
+
         FindGameHUDWidget();
+
+
         if (GameHUDWidget)
         {
-            GameHUDWidget->ShowInteractionPromptWithText(GetPickupPrompt());
+            GameHUDWidget->ShowInteractionPromptWithText(
+                GetPickupPrompt()
+            );
         }
     }
 }
+
 
 void ARepairItem::OnPlayerLeaveRange(
     UPrimitiveComponent* OverlappedComponent,
     AActor* OtherActor,
     UPrimitiveComponent* OtherComp,
-    int32 OtherBodyIndex)
+    int32 OtherBodyIndex
+)
 {
-    APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+    APlayerController* PlayerController =
+        GetWorld()->GetFirstPlayerController();
 
-    if (PlayerController && OtherActor == PlayerController->GetPawn())
+
+    if (
+        PlayerController &&
+        OtherActor == PlayerController->GetPawn()
+        )
     {
         DisableInput(PlayerController);
 
+
         FindGameHUDWidget();
+
+
         if (GameHUDWidget)
         {
             GameHUDWidget->HideInteractionPrompt();
         }
     }
 }
+
 
 void ARepairItem::FindGameHUDWidget()
 {
@@ -193,40 +362,109 @@ void ARepairItem::FindGameHUDWidget()
         return;
     }
 
+
     TArray<UUserWidget*> FoundWidgets;
+
+
     UWidgetBlueprintLibrary::GetAllWidgetsOfClass(
-        this, FoundWidgets, UGameHUDWidget::StaticClass(), false);
+        this,
+        FoundWidgets,
+        UGameHUDWidget::StaticClass(),
+        false
+    );
+
 
     if (FoundWidgets.Num() > 0)
     {
-        GameHUDWidget = Cast<UGameHUDWidget>(FoundWidgets[0]);
+        GameHUDWidget =
+            Cast<UGameHUDWidget>(
+                FoundWidgets[0]
+            );
     }
 }
+
 
 FText ARepairItem::GetPickupPrompt() const
 {
-    const FString PickupClassName = GetClass()->GetName();
+    const FString PickupClassName =
+        GetClass()->GetName();
 
-    if (PickupClassName.Contains(TEXT("CalibrationReader")))
+
+    // =============================================
+    // TOWER CABLE
+    // =============================================
+
+    if (
+        PickupClassName.Contains(
+            TEXT("TowerCable")
+        )
+        )
     {
-        return FText::FromString(TEXT("[E] PICK UP CALIBRATION READER"));
-    }
-    if (PickupClassName.Contains(TEXT("PressureCanister")))
-    {
-        return FText::FromString(TEXT("[E] PICK UP PRESSURE CANISTER"));
-    }
-    if (PickupClassName.Contains(TEXT("ResonanceConduit")))
-    {
-        return FText::FromString(TEXT("[E] PICK UP RESONANCE CONDUIT"));
+        return FText::FromString(
+            TEXT("[E] PICK UP POWER CABLE")
+        );
     }
 
-    return FText::FromString(TEXT("[E] PICK UP ITEM"));
+
+    // =============================================
+    // CALIBRATION READER
+    // =============================================
+
+    if (
+        PickupClassName.Contains(
+            TEXT("CalibrationReader")
+        )
+        )
+    {
+        return FText::FromString(
+            TEXT("[E] PICK UP CALIBRATION READER")
+        );
+    }
+
+
+    // =============================================
+    // PRESSURE CANISTER
+    // =============================================
+
+    if (
+        PickupClassName.Contains(
+            TEXT("PressureCanister")
+        )
+        )
+    {
+        return FText::FromString(
+            TEXT("[E] PICK UP PRESSURE CANISTER")
+        );
+    }
+
+
+    // =============================================
+    // RESONANCE CONDUIT
+    // =============================================
+
+    if (
+        PickupClassName.Contains(
+            TEXT("ResonanceConduit")
+        )
+        )
+    {
+        return FText::FromString(
+            TEXT("[E] PICK UP RESONANCE CONDUIT")
+        );
+    }
+
+
+    return FText::FromString(
+        TEXT("[E] PICK UP ITEM")
+    );
 }
+
 
 bool ARepairItem::IsCollected() const
 {
     return bCollected;
 }
+
 
 FName ARepairItem::GetItemID() const
 {

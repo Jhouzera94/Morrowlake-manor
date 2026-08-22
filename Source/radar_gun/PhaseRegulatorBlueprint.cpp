@@ -157,12 +157,12 @@ void APhaseRegulatorBlueprint::CollectBlueprint()
     {
         DisableInput(PlayerController);
 
+        UPlayerInventoryComponent* Inventory = nullptr;
         APawn* PlayerPawn = PlayerController->GetPawn();
 
         if (PlayerPawn)
         {
-            UPlayerInventoryComponent* Inventory =
-                PlayerPawn->FindComponentByClass<UPlayerInventoryComponent>();
+            Inventory = PlayerPawn->FindComponentByClass<UPlayerInventoryComponent>();
 
             if (Inventory)
             {
@@ -186,23 +186,12 @@ void APhaseRegulatorBlueprint::CollectBlueprint()
             }
         }
 
-        if (EvidenceWidgetClass)
+        // Open through the inventory component so the evidence screen is
+        // tracked by CloseEvidence. This keeps keyboard/mouse controls and
+        // lets the controller B button close the screen correctly.
+        if (Inventory && EvidenceWidgetClass)
         {
-            UUserWidget* EvidenceWidget =
-                CreateWidget<UUserWidget>(PlayerController, EvidenceWidgetClass);
-
-            if (EvidenceWidget)
-            {
-                EvidenceWidget->AddToViewport();
-
-                PlayerController->bShowMouseCursor = true;
-
-                FInputModeUIOnly InputMode;
-                InputMode.SetWidgetToFocus(EvidenceWidget->TakeWidget());
-                InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-
-                PlayerController->SetInputMode(InputMode);
-            }
+            Inventory->OpenEvidence();
         }
     }
 

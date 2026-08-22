@@ -55,6 +55,10 @@ private:
     UPROPERTY(EditAnywhere, Category = "Powered Door|Sound")
     USoundBase* LockedSound;
 
+    // Prevent repeated interaction presses from stacking the locked-door sound.
+    UPROPERTY(EditAnywhere, Category = "Powered Door|Sound", meta = (ClampMin = "0.0"))
+    float LockedSoundCooldown = 0.35f;
+
     UPROPERTY()
     UGameHUDWidget* GameHUD;
 
@@ -68,6 +72,7 @@ private:
     bool bDoorIsOpen = false;
     bool bDoorIsMoving = false;
     bool bLastPowerState = false;
+    float LastLockedSoundTime = -1000.0f;
 
     UFUNCTION()
     void OnPlayerEnterRange(

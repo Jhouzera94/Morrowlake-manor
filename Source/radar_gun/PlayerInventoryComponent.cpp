@@ -29,22 +29,6 @@ void UPlayerInventoryComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Abandoned_Story currently contains a PlayerStart below its entrance
-    // floor. Recover safely at runtime so both PIE and packaged builds start
-    // inside the mansion even if the map asset cannot be checked out.
-    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
-    {
-        const UWorld* World = GetWorld();
-        if (World && World->GetMapName().Contains(TEXT("Abandoned_Story")) &&
-            OwnerPawn->GetActorLocation().Z < 400.0)
-        {
-            FVector SafeLocation = OwnerPawn->GetActorLocation();
-            SafeLocation.Z = 540.0;
-            OwnerPawn->SetActorLocation(
-                SafeLocation, false, nullptr, ETeleportType::TeleportPhysics);
-        }
-    }
-
     ForceFirstPersonCamera();
     EnsureGameplayHUD();
 
@@ -55,30 +39,41 @@ void UPlayerInventoryComponent::BeginPlay()
     {
         World->GetTimerManager().SetTimerForNextTick(
             FTimerDelegate::CreateWeakLambda(this, [this]()
-        {
-            EnsureGameplayHUD();
-            APawn* OwnerPawn = Cast<APawn>(GetOwner());
-            if (OwnerPawn && OwnerPawn->InputComponent)
-            {
-                OwnerPawn->InputComponent->BindKey(
-                    EKeys::Tab,
-                    IE_Pressed,
-                    this,
-                    &UPlayerInventoryComponent::OpenEvidence);
+                {
+                    EnsureGameplayHUD();
+                    APawn* OwnerPawn = Cast<APawn>(GetOwner());
+                    if (OwnerPawn && OwnerPawn->InputComponent)
+                    {
+                        OwnerPawn->InputComponent->BindKey(
+                            EKeys::Tab,
+                            IE_Pressed,
+                            this,
+                            &UPlayerInventoryComponent::OpenEvidence);
 
-                OwnerPawn->InputComponent->BindKey(
-                    EKeys::Gamepad_FaceButton_Top,
-                    IE_Pressed,
-                    this,
-                    &UPlayerInventoryComponent::OpenEvidence);
+                        OwnerPawn->InputComponent->BindKey(
+                            EKeys::Gamepad_FaceButton_Top,
+                            IE_Pressed,
+                            this,
+                            &UPlayerInventoryComponent::OpenEvidence);
 
-                OwnerPawn->InputComponent->BindKey(
-                    EKeys::Gamepad_FaceButton_Right,
-                    IE_Pressed,
-                    this,
-                    &UPlayerInventoryComponent::CloseEvidence);
-            }
-        }));
+                        OwnerPawn->InputComponent->BindKey(
+                            EKeys::Gamepad_FaceButton_Right,
+                            IE_Pressed,
+                            this,
+                            &UPlayerInventoryComponent::CloseEvidence);
+
+                        OwnerPawn->InputComponent->BindKey(
+                            EKeys::T,
+                            IE_Pressed,
+                            this,
+                            &UPlayerInventoryComponent::ToggleActiveToolDisplay);
+
+                        OwnerPawn->InputComponent->BindAxisKey(
+                            EKeys::Gamepad_RightTriggerAxis,
+                            this,
+                            &UPlayerInventoryComponent::HandleToolToggleTrigger);
+                    }
+                }));
     }
 
     UpdateHUDComponentCount();
@@ -249,9 +244,8 @@ void UPlayerInventoryComponent::AddFirstFloorBlueprint()
             if (UGameHUDWidget* GameHUD = Cast<UGameHUDWidget>(FoundWidget))
             {
                 GameHUD->UpdateObjective(
-                    FText::FromString(TEXT("Search the first-floor office")),
-                    FText::FromString(
-                        TEXT("Use the first-floor blueprint to find the office")));
+                    FText::FromString(TEXT("Find the office")),
+                    FText::FromString(TEXT("Use the first-floor blueprint.")));
             }
         }
     }
@@ -282,6 +276,36 @@ bool UPlayerInventoryComponent::HasPhaseRegulatorBlueprint() const
     return bHasPhaseRegulatorBlueprint;
 }
 
+void UPlayerInventoryComponent::AddTowerRestorationBlueprint()
+{
+    if (bHasTowerRestorationBlueprint)
+    {
+        return;
+    }
+
+    bHasTowerRestorationBlueprint = true;
+    NextEvidenceIndex = 0;
+    UpdateHUDBlueprintCount();
+
+    TArray<UUserWidget*> FoundWidgets;
+    UWidgetBlueprintLibrary::GetAllWidgetsOfClass(
+        this, FoundWidgets, UGameHUDWidget::StaticClass(), false);
+    for (UUserWidget* FoundWidget : FoundWidgets)
+    {
+        if (UGameHUDWidget* GameHUD = Cast<UGameHUDWidget>(FoundWidget))
+        {
+            GameHUD->UpdateObjective(
+                FText::FromString(TEXT("Tower schematic collected")),
+                FText::FromString(TEXT("Proceed to tower restoration.")));
+        }
+    }
+}
+
+bool UPlayerInventoryComponent::HasTowerRestorationBlueprint() const
+{
+    return bHasTowerRestorationBlueprint;
+}
+
 void UPlayerInventoryComponent::AddMaintenanceTool()
 {
     if (bHasMaintenanceTool)
@@ -290,7 +314,10 @@ void UPlayerInventoryComponent::AddMaintenanceTool()
     }
 
     bHasMaintenanceTool = true;
+    EnsureGameplayHUD();
     UpdateHUDComponentCount();
+    UpdateHUDRepairItemIcons();
+    UpdateActiveToolHUD();
 }
 
 bool UPlayerInventoryComponent::HasMaintenanceTool() const
@@ -298,31 +325,77 @@ bool UPlayerInventoryComponent::HasMaintenanceTool() const
     return bHasMaintenanceTool;
 }
 
-void UPlayerInventoryComponent::AddCalibrationReader()
+void UPlayerInventoryComponent::AddPortalWrench()
 {
-    if (bHasCalibrationReader)
+    bHasPortalWrench = true;
+    UpdateActiveToolHUD();
+}
+
+bool UPlayerInventoryComponent::HasPortalWrench() const
+{
+    return bHasPortalWrench;
+}
+
+void UPlayerInventoryComponent::ToggleActiveToolDisplay()
+{
+    if (!bHasMaintenanceTool && !bHasPortalWrench)
     {
         return;
     }
 
-    bHasCalibrationReader = true;
+    if (bHasMaintenanceTool && bHasPortalWrench)
+    {
+        bShowWrenchAsActiveTool = !bShowWrenchAsActiveTool;
+    }
+    else
+    {
+        bShowWrenchAsActiveTool = bHasPortalWrench;
+    }
+
+    UpdateActiveToolHUD();
+}
+
+void UPlayerInventoryComponent::HandleToolToggleTrigger(float TriggerValue)
+{
+    constexpr float PressThreshold = 0.75f;
+    constexpr float ReleaseThreshold = 0.25f;
+
+    if (TriggerValue >= PressThreshold && !bToolToggleTriggerHeld)
+    {
+        bToolToggleTriggerHeld = true;
+        ToggleActiveToolDisplay();
+    }
+    else if (TriggerValue <= ReleaseThreshold)
+    {
+        bToolToggleTriggerHeld = false;
+    }
+}
+
+void UPlayerInventoryComponent::AddCalibrationReader()
+{
+    ++CalibrationReaderCount;
     UpdateHUDRepairItemIcons();
     RefreshPhaseRegulatorObjective();
 }
 
 bool UPlayerInventoryComponent::HasCalibrationReader() const
 {
-    return bHasCalibrationReader;
+    return CalibrationReaderCount > 0;
+}
+
+int32 UPlayerInventoryComponent::GetCalibrationReaderCount() const
+{
+    return CalibrationReaderCount;
 }
 
 bool UPlayerInventoryComponent::RemoveCalibrationReader()
 {
-    if (!bHasCalibrationReader)
+    if (CalibrationReaderCount <= 0)
     {
         return false;
     }
 
-    bHasCalibrationReader = false;
+    --CalibrationReaderCount;
     UpdateHUDRepairItemIcons();
     return true;
 }
@@ -388,9 +461,72 @@ bool UPlayerInventoryComponent::RemoveResonanceConduit()
 int32 UPlayerInventoryComponent::GetHeldRepairItemCount() const
 {
     return
-        (bHasCalibrationReader ? 1 : 0) +
+        (CalibrationReaderCount > 0 ? 1 : 0) +
         (bHasPressureCanister ? 1 : 0) +
         (bHasResonanceConduit ? 1 : 0);
+}
+
+
+// =========================================================
+// TOWER CABLE
+// =========================================================
+
+void UPlayerInventoryComponent::AddTowerCable()
+{
+    ++TowerCableCount;
+
+    UE_LOG(
+        LogTemp,
+        Warning,
+        TEXT("Tower Cable added to inventory.")
+    );
+
+    UpdateHUDRepairItemIcons();
+
+    TArray<UUserWidget*> FoundWidgets;
+    UWidgetBlueprintLibrary::GetAllWidgetsOfClass(
+        this, FoundWidgets, UGameHUDWidget::StaticClass(), false);
+
+    for (UUserWidget* FoundWidget : FoundWidgets)
+    {
+        if (UGameHUDWidget* GameHUD = Cast<UGameHUDWidget>(FoundWidget))
+        {
+            GameHUD->UpdateObjective(
+                FText::FromString(TEXT("Power cable collected")),
+                FText::FromString(TEXT("Take it to the Energy Tower."))
+            );
+        }
+    }
+}
+
+bool UPlayerInventoryComponent::HasTowerCable() const
+{
+    return TowerCableCount > 0;
+}
+
+int32 UPlayerInventoryComponent::GetTowerCableCount() const
+{
+    return TowerCableCount;
+}
+
+bool UPlayerInventoryComponent::RemoveTowerCable()
+{
+    if (TowerCableCount <= 0)
+    {
+        return false;
+    }
+
+    --TowerCableCount;
+
+    UE_LOG(
+        LogTemp,
+        Warning,
+        TEXT("Tower Cable removed from inventory.")
+    );
+
+    UpdateHUDRepairItemIcons();
+
+    return true;
 }
 
 void UPlayerInventoryComponent::RefreshPhaseRegulatorObjective()
@@ -426,8 +562,12 @@ void UPlayerInventoryComponent::RefreshPhaseRegulatorObjective()
     if (!bPowerIsOn)
     {
         Objective = FText::FromString(TEXT("Restore power to the manor"));
-        Hint = FText::FromString(
-            TEXT("The Phase Regulator cannot start without power"));
+        Hint = FText::Format(
+            FText::FromString(
+                TEXT("Components collected: {0}/3. The Phase\nRegulator cannot start without power")
+            ),
+            FText::AsNumber(FoundParts)
+        );
     }
     else if (Machine && Machine->IsMachineOnline())
     {
@@ -562,12 +702,12 @@ FVector2D UPlayerInventoryComponent::GetGroundFloorTrackedMapPosition() const
 
     // Blend the four closest captured anchors. This stays exact at room
     // centres while remaining smooth through doors, halls, and terraces.
-    float NearestDistanceSq[4] = {MAX_flt, MAX_flt, MAX_flt, MAX_flt};
-    int32 NearestIndex[4] = {INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE};
+    float NearestDistanceSq[4] = { MAX_flt, MAX_flt, MAX_flt, MAX_flt };
+    int32 NearestIndex[4] = { INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE };
 
     for (int32 AnchorIndex = 0;
-         AnchorIndex < UE_ARRAY_COUNT(Anchors);
-         ++AnchorIndex)
+        AnchorIndex < UE_ARRAY_COUNT(Anchors);
+        ++AnchorIndex)
     {
         const float DistanceSq = FVector2D::DistSquared(
             WorldPosition, Anchors[AnchorIndex].World);
@@ -647,8 +787,8 @@ namespace
 
     void FindNearestFirstFloorAnchors(
         const FVector2D& WorldPosition,
-        float (&OutDistanceSq)[4],
-        int32 (&OutIndex)[4])
+        float(&OutDistanceSq)[4],
+        int32(&OutIndex)[4])
     {
         for (int32 Slot = 0; Slot < 4; ++Slot)
         {
@@ -657,8 +797,8 @@ namespace
         }
 
         for (int32 AnchorIndex = 0;
-             AnchorIndex < UE_ARRAY_COUNT(FirstFloorAnchors);
-             ++AnchorIndex)
+            AnchorIndex < UE_ARRAY_COUNT(FirstFloorAnchors);
+            ++AnchorIndex)
         {
             const float DistanceSq = FVector2D::DistSquared(
                 WorldPosition, FirstFloorAnchors[AnchorIndex].World);
@@ -751,9 +891,37 @@ void UPlayerInventoryComponent::UpdateHUDRepairItemIcons()
         if (UGameHUDWidget* GameHUD = Cast<UGameHUDWidget>(FoundWidget))
         {
             GameHUD->UpdateRepairItemIcons(
-                bHasCalibrationReader,
+                CalibrationReaderCount,
                 bHasPressureCanister,
-                bHasResonanceConduit);
+                bHasResonanceConduit,
+                HasTowerCable(),
+                bHasGeneratorFuse,
+                bHasMaintenanceTool);
+            GameHUD->UpdateStackableItemCounts(
+                CalibrationReaderCount,
+                TowerCableCount);
+            GameHUD->UpdateActiveToolDisplay(
+                bHasMaintenanceTool,
+                bHasPortalWrench,
+                bShowWrenchAsActiveTool);
+        }
+    }
+}
+
+void UPlayerInventoryComponent::UpdateActiveToolHUD()
+{
+    TArray<UUserWidget*> FoundWidgets;
+    UWidgetBlueprintLibrary::GetAllWidgetsOfClass(
+        this, FoundWidgets, UGameHUDWidget::StaticClass(), false);
+
+    for (UUserWidget* FoundWidget : FoundWidgets)
+    {
+        if (UGameHUDWidget* GameHUD = Cast<UGameHUDWidget>(FoundWidget))
+        {
+            GameHUD->UpdateActiveToolDisplay(
+                bHasMaintenanceTool,
+                bHasPortalWrench,
+                bShowWrenchAsActiveTool);
         }
     }
 }
@@ -767,6 +935,7 @@ void UPlayerInventoryComponent::AddGeneratorFuse()
 
     bHasGeneratorFuse = true;
     UpdateHUDComponentCount();
+    UpdateHUDRepairItemIcons();
 }
 
 bool UPlayerInventoryComponent::RemoveGeneratorFuse()
@@ -778,6 +947,7 @@ bool UPlayerInventoryComponent::RemoveGeneratorFuse()
 
     bHasGeneratorFuse = false;
     UpdateHUDComponentCount();
+    UpdateHUDRepairItemIcons();
 
     return true;
 }
@@ -849,13 +1019,18 @@ void UPlayerInventoryComponent::UpdateHUDBlueprintCount()
         ++BlueprintCount;
     }
 
+    if (bHasTowerRestorationBlueprint)
+    {
+        ++BlueprintCount;
+    }
+
     // More than one HUD can briefly exist during level transitions or PIE.
     // Updating only index zero can leave the visible HUD with stale values.
     for (UUserWidget* FoundWidget : FoundWidgets)
     {
         if (UGameHUDWidget* GameHUD = Cast<UGameHUDWidget>(FoundWidget))
         {
-            GameHUD->UpdateBlueprintCount(BlueprintCount, 3);
+            GameHUD->UpdateBlueprintCount(BlueprintCount, 4);
         }
     }
 }
@@ -864,7 +1039,8 @@ void UPlayerInventoryComponent::OpenEvidence()
 {
     if (!bHasGroundFloorBlueprint &&
         !bHasFirstFloorBlueprint &&
-        !bHasPhaseRegulatorBlueprint)
+        !bHasPhaseRegulatorBlueprint &&
+        !bHasTowerRestorationBlueprint)
     {
         return;
     }
@@ -883,15 +1059,15 @@ void UPlayerInventoryComponent::OpenEvidence()
         return;
     }
 
-    // Stable evidence order: ground floor -> first floor -> Phase Regulator.
+    // Stable evidence order: ground floor -> first floor -> Phase Regulator -> Energy Tower.
     // Missing or unconfigured documents are skipped safely.
-    for (int32 Attempt = 0; Attempt < 3; ++Attempt)
+    for (int32 Attempt = 0; Attempt < 4; ++Attempt)
     {
-        const int32 EvidenceIndex = (NextEvidenceIndex + Attempt) % 3;
+        const int32 EvidenceIndex = (NextEvidenceIndex + Attempt) % 4;
         if (IsEvidenceIndexCollected(EvidenceIndex) &&
             TryOpenEvidenceIndex(EvidenceIndex))
         {
-            NextEvidenceIndex = (EvidenceIndex + 1) % 3;
+            NextEvidenceIndex = (EvidenceIndex + 1) % 4;
             return;
         }
     }
@@ -919,6 +1095,14 @@ void UPlayerInventoryComponent::CloseEvidence()
     ForceFirstPersonCamera();
 }
 
+void UPlayerInventoryComponent::OpenTowerRestorationEvidence()
+{
+    if (bHasTowerRestorationBlueprint && TryOpenEvidenceIndex(3))
+    {
+        NextEvidenceIndex = 0;
+    }
+}
+
 void UPlayerInventoryComponent::OpenFirstFloorEvidence()
 {
     if (bHasFirstFloorBlueprint && TryOpenEvidenceIndex(1))
@@ -931,10 +1115,11 @@ bool UPlayerInventoryComponent::IsEvidenceIndexCollected(int32 EvidenceIndex) co
 {
     switch (EvidenceIndex)
     {
-        case 0: return bHasGroundFloorBlueprint;
-        case 1: return bHasFirstFloorBlueprint;
-        case 2: return bHasPhaseRegulatorBlueprint;
-        default: return false;
+    case 0: return bHasGroundFloorBlueprint;
+    case 1: return bHasFirstFloorBlueprint;
+    case 2: return bHasPhaseRegulatorBlueprint;
+    case 3: return bHasTowerRestorationBlueprint;
+    default: return false;
     }
 }
 
@@ -962,6 +1147,10 @@ bool UPlayerInventoryComponent::TryOpenEvidenceIndex(int32 EvidenceIndex)
     else if (EvidenceIndex == 2)
     {
         WidgetClass = PhaseRegulatorEvidenceWidgetClass;
+    }
+    else if (EvidenceIndex == 3)
+    {
+        WidgetClass = TowerRestorationEvidenceWidgetClass;
     }
 
     if (!WidgetClass)
@@ -997,7 +1186,7 @@ bool UPlayerInventoryComponent::TryOpenEvidenceIndex(int32 EvidenceIndex)
     }
 
     if (UEvidenceWidget* EvidenceWidget =
-            Cast<UEvidenceWidget>(CurrentEvidenceWidget))
+        Cast<UEvidenceWidget>(CurrentEvidenceWidget))
     {
         if (EvidenceIndex == 0)
         {
@@ -1049,6 +1238,8 @@ bool UPlayerInventoryComponent::AddKey(FName KeyID)
     }
 
     CollectedKeyIDs.Add(KeyID);
+
+    EnsureGameplayHUD();
     UpdateHUDKeyCount();
 
     return true;
@@ -1076,16 +1267,11 @@ void UPlayerInventoryComponent::UpdateHUDKeyCount()
     UWidgetBlueprintLibrary::GetAllWidgetsOfClass(
         this, FoundWidgets, UGameHUDWidget::StaticClass(), false);
 
-    if (FoundWidgets.Num() == 0)
+    for (UUserWidget* FoundWidget : FoundWidgets)
     {
-        return;
-    }
-
-    UGameHUDWidget* GameHUD =
-        Cast<UGameHUDWidget>(FoundWidgets[0]);
-
-    if (GameHUD)
-    {
-        GameHUD->UpdateKeyCount(GetKeyCount());
+        if (UGameHUDWidget* GameHUD = Cast<UGameHUDWidget>(FoundWidget))
+        {
+            GameHUD->UpdateKeyCount(GetKeyCount());
+        }
     }
 }
