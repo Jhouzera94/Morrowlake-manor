@@ -16,10 +16,17 @@ public:
 private:
     void RepairStartup();
     void UpdateControllerLook();
+    void OptimizeSecurityCameras();
+    void UpdateNextSecurityCamera();
 
     int32 RemainingAttempts = 30;
     FTimerHandle RepairTimer;
     FTimerHandle ControllerLookTimer;
+    FTimerHandle SecurityCameraSetupTimer;
+    FTimerHandle SecurityCameraUpdateTimer;
+
+    TArray<TWeakObjectPtr<class USceneCaptureComponent2D>> SecurityCameras;
+    int32 NextSecurityCameraIndex = 0;
 
     float ControllerLookDeadZone = 0.35f;
     float ControllerYawSpeed = 120.0f;

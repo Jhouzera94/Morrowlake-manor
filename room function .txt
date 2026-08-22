@@ -1,0 +1,22 @@
+| Area | Purpose |
+|---|---|
+| Starting chamber / bedroom | Wake-up tape and first blueprint |
+| Hall entrance | Main hub; task updates guide the player |
+| Garage | Find a tool case or broken machinery clue |
+| Computer room | Restore a computer terminal; reveals camera footage / code |
+| Camera room | Watch footage that identifies where a key or fuse was taken |
+| Lab | Discover what the tower and machine were built for |
+| Living room | Environmental story scene: family photos, final gathering, letter |
+| Dining room | Find a taped recording or hidden drawer clue |
+| Kitchen | Find a small practical item, such as a screwdriver or matches |
+| Study 1 | Manor Study Key or first major written evidence |
+| Study 2 | Evidence about the owner and the time-machine experiment |
+| Office | Generator House Key or blueprint annotation |
+| Library | Hidden book mechanism / Tower Key clue |
+| Bedroom 1 | Personal story of one resident; optional tape |
+| Bedroom 2 | Machine component or important photograph |
+| Bedroom 3 | Attic Key or final-family clue |
+| Attic | Third blueprint and final tower connection |
+| Pool house | **Bolt cutters / crowbar / old maintenance tool** that unlocks a chained gate, sealed cabinet, or tower panel |
+| Generator house | Fuse, generator repair, power restoration |
+| Energy tower | Final activation point before travelling to the past |

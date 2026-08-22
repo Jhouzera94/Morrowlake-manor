@@ -61,11 +61,11 @@ AElectricalPanel::AElectricalPanel()
 
     ToolRequiredObjective =
         FText::FromString(
-            TEXT("A maintenance tool is required"));
+            TEXT("Fuse box is closed."));
 
     ToolRequiredHint =
         FText::FromString(
-            TEXT("Find a tool capable of opening this panel"));
+            TEXT("Find something to open it."));
 
     FuseObjective =
         FText::FromString(

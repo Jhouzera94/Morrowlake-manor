@@ -45,5 +45,12 @@ private:
     UPROPERTY()
     AEnergyTower* TowerRef = nullptr;
 
+    // Cache the values rendered into Slate so an idle tower does not
+    // invalidate and rebuild the same text every frame.
+    int32 CachedPercent = INDEX_NONE;
+    int8 CachedSystemStatus = -1;
+    bool bCachedComponent1Installed = false;
+    bool bHasCachedComponent1State = false;
+
     void UpdateDisplay();
 };

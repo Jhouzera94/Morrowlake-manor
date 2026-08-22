@@ -1,0 +1,140 @@
+### Phase 1 — Core Interaction System
+
+* [ ] Make sure the player can interact using **E**
+* [ ] Create a reusable `Interactable` system
+* [ ] Display `[E] INTERACT` when looking at an interactable
+* [ ] Hide the interaction message when moving away
+
+### Phase 2 — Flashlight
+
+* [ ] Create the pickupable flashlight
+* [ ] Add flashlight to the player's inventory/tools
+* [ ] Allow the player to equip the flashlight
+* [ ] Add flashlight **ON/OFF** input
+* [ ] Add flashlight sound effects
+* [ ] Update HUD: `Tools 0/2 → 1/2`
+
+### Phase 3 — Blueprint
+
+* [ ] Create Ground Floor Blueprint pickup
+* [ ] Allow player to inspect blueprint
+* [ ] Highlight the **Pool House / Generator**
+* [ ] Update HUD: `Blueprints 0/3 → 1/3`
+* [ ] Change objective to **INVESTIGATE THE POOL HOUSE**
+
+### Phase 4 — Maintenance Tool
+
+* [ ] Create screwdriver/maintenance-tool pickup
+* [ ] Add it to inventory
+* [ ] Create notification: `MAINTENANCE TOOL ACQUIRED`
+* [ ] Use it as a requirement for the electrical panel
+
+### Phase 5 — Electrical Panel
+
+* [ ] Create locked electrical-panel Blueprint/C++ Actor
+* [ ] Display message if player doesn't have maintenance tool
+* [ ] Allow panel to open when player has the tool
+* [ ] Add opening animation
+* [ ] Put generator fuse inside panel
+
+### Phase 6 — Generator Fuse
+
+* [ ] Create generator-fuse pickup
+* [ ] Add fuse to Components inventory
+* [ ] Update HUD component counter
+* [ ] Update objective to **INSTALL THE GENERATOR FUSE**
+
+### Phase 7 — Generator
+
+* [ ] Prevent generator from starting without fuse
+* [ ] Display `FUSE MISSING`
+* [ ] Allow player to install fuse
+* [ ] Remove fuse from player inventory when installed
+* [ ] Display `FUSE INSTALLED — GENERATOR READY`
+* [ ] Require another **E** interaction to start generator
+* [ ] Add generator startup animation
+* [ ] Add generator audio
+* [ ] Change generator screen from red to green
+
+### Phase 8 — Global Power System
+
+* [ ] Create central manor power state
+* [ ] Generator sets manor power to **ON**
+* [ ] Create a system other actors can use to check whether power is available
+* [ ] Activate powered lights
+* [ ] Activate electrical effects/cables
+* [ ] Activate monitors
+* [ ] Activate powered doors
+* [ ] Update objective to **POWER RESTORED**
+
+### Phase 9 — Powered Doors
+
+* [ ] Create reusable powered-door actor
+* [ ] Door stays locked when power is OFF
+* [ ] Display `NO POWER — ELECTRONIC LOCK`
+* [ ] Unlock when generator turns on
+* [ ] Add opening/closing animation
+* [ ] Add door sounds
+
+### Phase 10 — Key Doors
+
+* [ ] Create reusable key pickup
+* [ ] Create reusable locked-door system
+* [ ] Give each key an ID/name
+* [ ] Give each locked door a required key
+* [ ] Display `KEY REQUIRED` when player doesn't have it
+* [ ] Unlock door when correct key is collected
+* [ ] Decide whether keys remain in inventory after use
+
+### Phase 11 — Powered Monitors
+
+* [ ] Create monitor actor
+* [ ] Screen stays black when power is OFF
+* [ ] Screen activates when generator starts
+* [ ] Add startup/flicker effect
+* [ ] Add monitor sound
+* [ ] Display story information
+* [ ] Use laboratory monitor to reveal the next narrative clue
+
+### Phase 12 — HUD
+
+* [ ] Objective display
+* [ ] Tools counter
+* [ ] Components counter
+* [ ] Blueprint counter
+* [ ] Interaction prompt
+* [ ] Item pickup notifications
+* [ ] Objective update notifications
+* [ ] Inventory screen
+
+### Phase 13 — Opening Gameplay Test
+
+* [ ] Wake up in laboratory
+* [ ] Collect flashlight
+* [ ] Find blueprint
+* [ ] Find escape window
+* [ ] Reach pool house
+* [ ] Find maintenance tool
+* [ ] Open electrical panel
+* [ ] Collect fuse
+* [ ] Install fuse
+* [ ] Start generator
+* [ ] Powered doors unlock
+* [ ] Manor lights activate
+* [ ] Monitors activate
+* [ ] Return to laboratory
+* [ ] Discover next story clue
+
+### Phase 14 — Polish
+
+* [ ] Add interaction sounds
+* [ ] Add pickup sounds
+* [ ] Add door sounds
+* [ ] Add environmental ambience
+* [ ] Add animations
+* [ ] Improve lighting
+* [ ] Add VFX
+* [ ] Test objective progression
+* [ ] Test inventory progression
+* [ ] Fix bugs
+* [ ] Playtest the entire opening sequence

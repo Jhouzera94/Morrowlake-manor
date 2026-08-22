@@ -9,6 +9,10 @@ void UEnergyTowerDisplayWidget::SetTowerReference(
 {
     TowerRef = InTower;
 
+    CachedPercent = INDEX_NONE;
+    CachedSystemStatus = -1;
+    bHasCachedComponent1State = false;
+
     UpdateDisplay();
 }
 
@@ -39,7 +43,9 @@ void UEnergyTowerDisplayWidget::UpdateDisplay()
     // Progress bar
     // -------------------------
 
-    if (PB_ChargeProgress)
+    const int32 Percent = FMath::RoundToInt(ChargeProgress * 100.0f);
+
+    if (PB_ChargeProgress && Percent != CachedPercent)
     {
         PB_ChargeProgress->SetPercent(ChargeProgress);
     }
@@ -50,28 +56,30 @@ void UEnergyTowerDisplayWidget::UpdateDisplay()
 
     if (TXT_ChargePercent)
     {
-        const int32 Percent =
-            FMath::RoundToInt(ChargeProgress * 100.0f);
-
-        TXT_ChargePercent->SetText(
+        if (Percent != CachedPercent)
+        {
+            TXT_ChargePercent->SetText(
             FText::FromString(
                 FString::Printf(
                     TEXT("CHARGING: %d%%"),
                     Percent
                 )
-            )
-        );
+            ));
+        }
     }
 
     // -------------------------
     // Component 1
     // -------------------------
 
-    if (TXT_Component1)
+    const bool bComponent1Installed = TowerRef->IsComponent1Installed();
+    if (TXT_Component1 &&
+        (!bHasCachedComponent1State ||
+         bComponent1Installed != bCachedComponent1Installed))
     {
         TXT_Component1->SetText(
             FText::FromString(
-                TowerRef->IsComponent1Installed()
+                bComponent1Installed
                 ? TEXT("COMPONENT 01: INSTALLED")
                 : TEXT("COMPONENT 01: MISSING")
             )
@@ -84,13 +92,7 @@ void UEnergyTowerDisplayWidget::UpdateDisplay()
 
     if (TXT_Component2)
     {
-        TXT_Component2->SetText(
-            FText::FromString(
-                TowerRef->IsComponent2Installed()
-                ? TEXT("COMPONENT 02: INSTALLED")
-                : TEXT("COMPONENT 02: MISSING")
-            )
-        );
+        TXT_Component2->SetVisibility(ESlateVisibility::Collapsed);
     }
 
     // -------------------------
@@ -99,34 +101,41 @@ void UEnergyTowerDisplayWidget::UpdateDisplay()
 
     if (TXT_AccessCode)
     {
-        TXT_AccessCode->SetText(
-            FText::FromString(
-                TowerRef->IsAccessCodeAccepted()
-                ? TEXT("ACCESS CODE: ACCEPTED")
-                : TEXT("ACCESS CODE: REQUIRED")
-            )
-        );
+        TXT_AccessCode->SetVisibility(ESlateVisibility::Collapsed);
     }
 
     // -------------------------
     // System status
     // -------------------------
 
-    if (TXT_SystemStatus)
+    int8 SystemStatus = 0;
+    if (TowerRef->IsTowerCharged())
+    {
+        SystemStatus = 3;
+    }
+    else if (TowerRef->IsCharging())
+    {
+        SystemStatus = 2;
+    }
+    else if (bComponent1Installed)
+    {
+        SystemStatus = 1;
+    }
+
+    if (TXT_SystemStatus && SystemStatus != CachedSystemStatus)
     {
         FString Status;
 
-        if (TowerRef->IsTowerCharged())
+        if (SystemStatus == 3)
         {
             Status = TEXT("SYSTEM: ONLINE");
         }
-        else if (TowerRef->IsAccessCodeAccepted())
+        else if (SystemStatus == 2)
         {
             Status = TEXT("SYSTEM: CHARGING");
         }
         else if (
-            TowerRef->IsComponent1Installed() &&
-            TowerRef->IsComponent2Installed())
+            SystemStatus == 1)
         {
             Status = TEXT("SYSTEM: AWAITING CODE");
         }
@@ -139,4 +148,9 @@ void UEnergyTowerDisplayWidget::UpdateDisplay()
             FText::FromString(Status)
         );
     }
+
+    CachedPercent = Percent;
+    CachedSystemStatus = SystemStatus;
+    bCachedComponent1Installed = bComponent1Installed;
+    bHasCachedComponent1State = true;
 }

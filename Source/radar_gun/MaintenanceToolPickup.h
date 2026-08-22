@@ -41,17 +41,24 @@ private:
     USoundBase* PickupSound = nullptr;
 
     UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Maintenance Tool|Inventory",
+        meta = (AllowPrivateAccess = "true"))
+    bool bAddsPortalWrench = false;
+
+    UPROPERTY(
         EditAnywhere,
         Category = "Maintenance Tool|Objective")
     FText ObjectiveAfterPickup =
-        FText::FromString(TEXT("Open the electrical panel"));
+        FText::FromString(TEXT("Screwdriver collected"));
 
     UPROPERTY(
         EditAnywhere,
         Category = "Maintenance Tool|Objective")
     FText ObjectiveHintAfterPickup =
         FText::FromString(
-            TEXT("Find the secured electrical panel in the manor"));
+            TEXT("Screwdriver added to your inventory.\nUse it to open the fuse box."));
 
     UPROPERTY()
     UGameHUDWidget* GameHUDWidget = nullptr;

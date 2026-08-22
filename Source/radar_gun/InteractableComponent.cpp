@@ -6,8 +6,8 @@
 // Sets default values
 AInteractableComponent::AInteractableComponent()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	// This actor is entirely event-driven; avoid registering an empty tick.
+	PrimaryActorTick.bCanEverTick = false;
 
 }
 

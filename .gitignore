@@ -11,6 +11,11 @@ Saved/
 *.suo
 *.xcodeproj
 *.xcworkspace
+.codex_qa/
+tools/inspect_gdd.py
+tools/update_gdd.py
+*.TMP
+*.tmp
 .vsconfig
 Content/Clinic/
 Content/CyberpunkIndustries/

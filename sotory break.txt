@@ -1,0 +1,19 @@
+The player wakes beside a bed or broken time machine in Morrowlake Manor, confused and alone.
+A tape recorder nearby says something like: “If you woke up, the machine failed. Restore the power. Find the plans. Do not trust what the house tells you.”
+They find the first blueprint and add it to Evidence. It reveals the next area to search.
+Each major item leads naturally to another:Manor key → opens a locked room
+Blueprint → shows a hidden route or generator house
+Missing fuse → repairs the generator
+Generator power → activates lights, doors, and the tower connection
+Final machine component/key → lets them start the time machine
+
+Once the player activates the machine, they travel back once—to the same manor on the night of the disaster.
+In the past, the house is alive: lights work, rooms are furnished, tapes/letters can be understood in context, and the player discovers what happened to the owner, the manor, and the machine.
+The final revelation explains why the player woke there and what they must do before returning—or whether they should return at all.
+That gives you a very clear dissertation point: the architecture tells the story through access and discovery. The player understands the manor first as a damaged, abandoned space; then revisits it in the past and understands the meaning of each room, object, and route.
+The HUD concept still works. The clock is not a repeating loop—it can simply show the date/time of the current period:
+Present: 14 OCT 1996 · 02:41 AM
+Past: 14 OCT 1926 · 09:18 PM
+The title could be:
+MORROWLAKE MANOR
+The Night the House Stopped

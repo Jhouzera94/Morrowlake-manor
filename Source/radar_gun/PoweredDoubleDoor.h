@@ -71,6 +71,10 @@ private:
     UPROPERTY(EditAnywhere, Category = "Powered Double Door|Sound")
     USoundBase* CloseSound;
 
+    // Prevent repeated interaction presses from stacking the locked-door sound.
+    UPROPERTY(EditAnywhere, Category = "Powered Double Door|Sound", meta = (ClampMin = "0.0"))
+    float LockedSoundCooldown = 0.35f;
+
     UPROPERTY(EditAnywhere, Category = "Powered Double Door|Text")
     FText DoorDisplayName =
         FText::FromString(TEXT("Exterior Door"));
@@ -83,6 +87,7 @@ private:
 
     FRotator LeftStartRotation;
     FRotator RightStartRotation;
+    float LastLockedSoundTime = -1000.0f;
 
     FRotator LeftTargetRotation;
     FRotator RightTargetRotation;
